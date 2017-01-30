@@ -1,0 +1,8 @@
+[package]
+name = "MPED"
+version = "0.1.0"
+authors = ["finalfire <f.cauteruccio@gmail.com>"]
+
+[dependencies]
+
+rand="0.3.0"
