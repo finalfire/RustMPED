@@ -88,6 +88,22 @@ fn shuffle(a: &mut Vec<usize>) {
     }
 }
 
+fn min(a: isize, b: isize) -> isize {
+    if a < b {
+        a
+    } else {
+        b
+    }
+}
+
+fn max(a: isize, b: isize) -> isize {
+    if a > b {
+        a
+    } else {
+        b
+    }
+}
+
 
 /* ======= MATCHING SCHEMA (struct & functions) ======= */
 
@@ -128,10 +144,8 @@ fn edit_distance_enhanced(a: &Vec<usize>, b: &Vec<usize>, sig1: &Vec<usize>, sig
     let len_b = b.len();
     
     // We build the new index for the symbols
-    let mut sig1_index: Vec<usize> = vec![0; sig1.len() as usize];
-    let mut sig2_index: Vec<usize> = vec![0; sig2.len() as usize];
-    for i in 0..sig1.len() { sig1_index[sig1[i]] = i; }
-    for i in 0..sig2.len() { sig2_index[sig2[i]] = i; }
+    let mut sig1_index: Vec<usize> = vec![0; sig1.len() as usize]; for i in 0..sig1.len() { sig1_index[sig1[i]] = i; }
+    let mut sig2_index: Vec<usize> = vec![0; sig2.len() as usize]; for i in 0..sig2.len() { sig2_index[sig2[i]] = i; }
     
     for i in 0..len_a+1 { matrix[i][0] = i as u32; }
     for j in 0..len_b+1 { matrix[0][j] = j as u32; }
@@ -151,6 +165,70 @@ fn edit_distance_enhanced(a: &Vec<usize>, b: &Vec<usize>, sig1: &Vec<usize>, sig
     }
     
     matrix[len_a][len_b]
+}
+
+fn edit_distance_enhanced_diagonal(a: &Vec<usize>, b: &Vec<usize>, sig1: &Vec<usize>, sig2: &Vec<usize>, m: &MatchingSchema, threshold: u32) -> i32 {
+    
+    let MAX: i32 = i32::max_value();
+    
+    if ((a.len() - b.len()) as isize).abs() >= (threshold as isize) || threshold < 0 {
+        return -1;
+    }
+    
+    // We build the new index for the symbols
+    let mut sig1_index: Vec<usize> = vec![0; sig1.len() as usize]; for i in 0..sig1.len() { sig1_index[sig1[i]] = i; }
+    let mut sig2_index: Vec<usize> = vec![0; sig2.len() as usize]; for i in 0..sig2.len() { sig2_index[sig2[i]] = i; }
+    
+    // two rows and not the complete matrix
+    let mut p: Vec<i32> = vec![0; a.len()+1];
+    let mut d: Vec<i32> = vec![0; a.len()+1];
+    
+    // boundary
+    let mut boundary = min(a.len() as isize, threshold as isize)+1;
+    for i in 0..boundary { p[i as usize] = i as i32; }
+    
+    // fill array
+    for i in (boundary as usize)..a.len()+1 { p[i] = MAX; }
+    for i in 0..a.len()+1 { d[i] = MAX; }
+    
+    // iteration
+    for j in 1..b.len()+1 {
+        let c = b[j-1];
+        d[0] = j as i32;
+        
+        let min_v: isize = max(1, (j as isize)-(threshold as isize));
+        
+        let mut temp = min(a.len() as isize, (j as isize)+(threshold as isize));
+        let max_v: isize = if (j as isize) > ((MAX-(threshold as isize) as i32) as isize) {a.len() as isize} else {temp};
+        
+        if min_v > max_v {
+            println!("min: {}, max: {}", min_v, max_v);
+            return -1
+        }
+        
+        if min_v > 1 {
+            d[(min_v-1) as usize] = MAX;
+        }
+        
+        for i in min_v..max_v+1 {
+            if !m.get(sig1_index[a[(i-1) as usize]], sig2_index[c]) {
+                d[i as usize] = p[(i-1) as usize];
+            } else {
+                d[i as usize] = 1 + min(min(d[(i-1) as usize] as isize, p[i as usize] as isize), p[(i-1) as usize] as isize) as i32;
+            }
+        }
+        
+        for x in 0..a.len()+1 {
+            p[x] = d[x];
+        }
+    }
+    
+    let final_value = p[a.len()];
+    if final_value < (threshold as i32) {
+        return final_value;
+    }
+    
+    return -1;
 }
 
 fn hill_climbing(a: &Vec<usize>, b: &Vec<usize>, sig1: &Vec<usize>, sig2: &Vec<usize>, p: &usize, m: &MatchingSchema) -> u32 {
@@ -203,11 +281,12 @@ fn hill_climbing(a: &Vec<usize>, b: &Vec<usize>, sig1: &Vec<usize>, sig2: &Vec<u
                             temp = isig2_o[ipp];
                             isig2_o[ipp] = isig2_o[jpp];
                             isig2_o[jpp] = temp;
-                        
-                            d = edit_distance_enhanced(&a, &b, &isig1_o, &isig2_o, &mut matrix, &m);
-                            if d < min_dist {
+                            
+                            let new_dist: i32 = edit_distance_enhanced_diagonal(&a, &b, &isig1_o, &isig2_o, &m, min_dist);
+                            
+                            if new_dist != -1 {
                                 improved = true;
-                                min_dist = d;
+                                min_dist = new_dist as u32;
                             
                                 isig1_min = isig1_o.clone();
                                 isig2_min = isig2_o.clone();
@@ -215,7 +294,6 @@ fn hill_climbing(a: &Vec<usize>, b: &Vec<usize>, sig1: &Vec<usize>, sig2: &Vec<u
                         }                    
                         isig2_o = isig2_t.clone();
                     }
-                    
                 }
             }
         }
