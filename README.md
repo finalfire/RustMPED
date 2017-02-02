@@ -7,3 +7,7 @@ The Multi-Parameterized Edit Distance is a string metric which allows to compute
 ## References
 
 F. Cauteruccio, C. Stamile, G. Terracina, D. Ursino, D. Sappey-Marinier, "An automated string-based approach to extracting and characterizing White Matter fiber-bundles", Computers in Biology and Medicine, Volume 77, 1 October 2016, Pages 64–75.
+
+## Acknowledgements
+
+* Thanks to Luca Cinelli for the original implementation (in C++) of the `edit_distance_enhanced_diagonal` function.
